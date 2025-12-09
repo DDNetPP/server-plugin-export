@@ -154,6 +154,8 @@ archive_export() {
 
 	archive_save_files_if_found
 	archive_save_git_dirs_if_found
+
+	log "finished export written to $(tput bold)$adir$(tput sgr0)"
 }
 
 # main pubic method
