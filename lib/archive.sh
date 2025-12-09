@@ -1,9 +1,21 @@
 #!/bin/bash
 
-# archive directory name
-# used for loading and saving
-archive_dir() {
+ARG_FORMAT=dir
+
+ARCHIVE_TMP_DIR="$(mktemp -d /tmp/ddpp_server_archive_XXXXXX)"
+archive_cleanup() {
+	rm -rf "$ARCHIVE_TMP_DIR"
+}
+trap archive_cleanup EXIT
+
+# users choice for archive name
+archive_name() {
 	printf 'archive'
+}
+
+# unpacked temporary archive working directory
+archive_dir() {
+	printf '%s/%s' "$ARCHIVE_TMP_DIR" "$(archive_name)"
 }
 
 # copy file to archive
@@ -144,60 +156,119 @@ archive_save_git_dirs_if_found() {
 
 archive_load_dir() {
 	local adir
-	adir="$(archive_dir)"
-	if [ ! -f "$adir" ]
+	adir="$(archive_name)"
+
+	if [ "$ARG_FORMAT" = "base64" ]
 	then
-		err "Error: archive directory $(tput bold)$adir$(tput sgr0) not found"
+		if [ ! -f "$adir".base64 ]
+		then
+			err "Error: archive base64 $(tput bold)${adir}.base64$(tput sgr0) not found"
+			exit 1
+		fi
+		base64 -d "$adir".base64 > "$ARCHIVE_TMP_DIR"/archive.zip
+		pushd "$ARCHIVE_TMP_DIR"
+		unzip archive.zip
+		popd
+	elif [ "$ARG_FORMAT" = "zip" ]
+	then
+		if [ ! -f "$adir".zip ]
+		then
+			err "Error: archive zip $(tput bold)${adir}.zip$(tput sgr0) not found"
+			exit 1
+		fi
+		cp "${adir}.zip" "$ARCHIVE_TMP_DIR"
+		pushd "$ARCHIVE_TMP_DIR"
+		unzip "${adir}.zip"
+		popd
+	elif [ "$ARG_FORMAT" = "dir" ]
+	then
+		if [ ! -d "$adir" ]
+		then
+			err "Error: archive directory $(tput bold)$adir$(tput sgr0) not found"
+			exit 1
+		fi
+		cp -r "${adir}" "$ARCHIVE_TMP_DIR"/archive
+	else
+		err "Error: unknown format $ARG_FORMAT"
 		exit 1
 	fi
-
-	# TODO: unpack base64 and so on
 }
 
 # main pubic method
 archive_export() {
-	adir="$(archive_dir)"
-	if [ -d "$adir" ]
+	local format="$1"
+	ARG_FORMAT="$format"
+
+	# check if user chosen name and format
+	# matches an existing file
+	local adir
+	adir="$(archive_name)"
+	if [ -d "$adir" ] && [ "$ARG_FORMAT" = "dir" ]
 	then
 		err "Error: archive directory $(tput bold)$adir$(tput sgr0) already exists"
 		exit 1
 	fi
-	if [ -d "$adir".zip ]
+	if [ -d "$adir".zip ] && [ "$ARG_FORMAT" = "zip" ]
 	then
 		err "Error: archive zip $(tput bold)${adir}.zip$(tput sgr0) already exists"
 		exit 1
 	fi
-	if [ -d "$adir".base64 ]
+	if [ -d "$adir".base64 ] && [ "$ARG_FORMAT" = "base64" ]
 	then
 		err "Error: archive base64 $(tput bold)${adir}.base64$(tput sgr0) already exists"
 		exit 1
 	fi
-	mkdir -p "$adir"
+	# create temporary working directory
+	mkdir -p "$(archive_dir)"
 
 	archive_save_files_if_found
 	archive_save_git_dirs_if_found
 
+	# generate all formats at all times
+	pushd "$ARCHIVE_TMP_DIR"
+	zip -r archive.zip archive
+	base64 -w0 archive.zip > archive.base64
+	popd
 
-	# TODO: cli args
+	if [ "$ARG_FORMAT" = "base64" ]
+	then
+		cp "$(archive_dir).base64" "$(archive_name).base64"
+	elif [ "$ARG_FORMAT" = "zip" ]
+	then
+		cp "$(archive_dir).zip" "$(archive_name).zip"
+	elif [ "$ARG_FORMAT" = "dir" ]
+	then
+		cp -r "$(archive_dir)" "$(archive_name)"
+	else
+		err "Unsupported format '$ARG_FORMAT'"
+		exit 1
+	fi
 
-	# zip -r archive.zip archive
-	# local size
-	# size="$(du archive.zip | awk '{ print $1}')"
-	# if [ "$size" -lt 20 ]
-	# then
-	# 	log "small archive detected creating base64 that can be copy pasted ..."
-	# 	echo ""
-	# 	base64 -w0 archive.zip > archive.base64
-	# 	cat archive.base64
-	# 	echo ""
-	# 	log "copy the output above into a archive.base64 file to import"
-	# fi
+	local size
+	size="$(du "$(archive_dir).zip" | awk '{ print $1}')"
+	if [ "$size" -lt 20 ]
+	then
+		log "small archive detected creating base64 that can be copy pasted ..."
+		echo ""
+		cat "$(archive_dir)".base64
+		echo ""
+		echo ""
+		log "copy the output above into a archive.base64 file to import"
+	fi
 
-	log "finished export written to $(tput bold)$adir$(tput sgr0)"
+	local out_name
+	out_name="$(archive_name)"
+	if [ "$ARG_FORMAT" != "dir" ]
+	then
+		out_name="$out_name.$ARG_FORMAT"
+	fi
+	log "finished export written to $(tput bold)$out_name$(tput sgr0)"
 }
 
 # main pubic method
 archive_import() {
+	local format="$1"
+	ARG_FORMAT="$format"
 	archive_load_dir
 
 	archive_load_files_if_found

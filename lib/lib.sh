@@ -15,7 +15,7 @@ source "$PLUGIN_PATH/lib/archive.sh"
 
 show_help() {
 	cat <<-EOF
-	usage: ${PLUGIN_PATH}/bin/archive_cli ACTION
+	usage: ${PLUGIN_PATH}/bin/archive_cli ACTION [OPTION]
 	description:
 	  creates an archive of the current state
 	  in this server directory
@@ -26,6 +26,10 @@ show_help() {
 	actions:
 	  export          creates a archive/ directory with all found state
 	  import          extracts all files from archive/ directory into the current server dir
+	options:
+	  --dir       use directory as format (default)
+	  --base64    use base64 file of zip archive as format
+	  --zip       use zip file as format
 	examples:
 	  archive_cli export
 	  archive_cli import
@@ -35,6 +39,7 @@ show_help() {
 parse_args() {
 	local arg
 	local action=""
+	local format=dir
 	while [ "$#" -gt 0 ]
 	do
 		arg="$1"
@@ -45,6 +50,15 @@ parse_args() {
 			then
 				show_help
 				exit 0
+			elif [ "$arg" = "--dir" ]
+			then
+				format=dir
+			elif [ "$arg" = "--zip" ]
+			then
+				format=zip
+			elif [ "$arg" = "--base64" ]
+			then
+				format=base64
 			else
 				err "Unknown option '$arg'"
 				exit 1
@@ -75,10 +89,10 @@ parse_args() {
 
 	if [ "$action" = "export" ]
 	then
-		archive_export
+		archive_export "$format"
 	elif [ "$action" = "import" ]
 	then
-		archive_import
+		archive_import "$format"
 	else
 		show_help
 		exit 1
