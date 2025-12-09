@@ -16,5 +16,14 @@ git clone git@github.com:DDNetPP/server-plugin-export
 
 ```
 cd myserver
-./lib/plugins/server-plugin-export/bin/export_state
+./lib/plugins/server-plugin-export/bin/archive_cli export
+# this creates a archive/ directory
+```
+
+## restore and export
+
+```
+cd myserver
+# copy archive/ directory from export into current working directory
+./lib/plugins/server-plugin-export/bin/archive_cli import
 ```
