@@ -158,7 +158,18 @@ archive_load_dir() {
 	local adir
 	adir="$(archive_name)"
 
-	if [ "$ARG_FORMAT" = "base64" ]
+	if [ "$ARG_FORMAT" = "stdin_base64" ]
+	then
+		log "paste base64 encoded archive to import"
+		printf '> '
+		local archive_input_b64
+		read -r archive_input_b64
+		pushd "$ARCHIVE_TMP_DIR"
+		printf '%s' "$archive_input_b64" > archive.base64
+		base64 -d archive.base64 > archive.zip
+		unzip archive.zip
+		popd
+	elif [ "$ARG_FORMAT" = "base64" ]
 	then
 		if [ ! -f "$adir".base64 ]
 		then

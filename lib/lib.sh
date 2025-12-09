@@ -30,6 +30,7 @@ show_help() {
 	  --dir       use directory as format (default)
 	  --base64    use base64 file of zip archive as format
 	  --zip       use zip file as format
+	  --stdin     read base64 as input for import (export not supported)
 	examples:
 	  archive_cli export
 	  archive_cli import
@@ -59,6 +60,9 @@ parse_args() {
 			elif [ "$arg" = "--base64" ]
 			then
 				format=base64
+			elif [ "$arg" = "--stdin" ]
+			then
+				format=stdin_base64
 			else
 				err "Unknown option '$arg'"
 				exit 1
@@ -89,6 +93,11 @@ parse_args() {
 
 	if [ "$action" = "export" ]
 	then
+		if [ "$format" = stdin_base64 ]
+		then
+			err "Error: --stdin can only be used with import not with export"
+			exit 1
+		fi
 		archive_export "$format"
 	elif [ "$action" = "import" ]
 	then
