@@ -72,11 +72,13 @@ archive_load_files_if_found() {
 		server.cnf
 	)
 	local file
+	local adir
+	adir="$(archive_dir)"
 	for file in "${files[@]}"
 	do
-		[ -f "$file" ] || continue
+		[ -f "$adir/$file" ] || continue
 
-		log "found file $file, extracting .."
+		log "found file $adir/$file, extracting .."
 		archive_load_file "$file"
 	done
 }

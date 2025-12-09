@@ -11,6 +11,8 @@ then
     echo "make sure you are in the root of the server repo"
     exit 1
 fi
+# do not ask to create server.cnf we import it from archive
+SKIP_CREATE_SETTINGS_FILE=1
 source lib/lib.sh # server root lib
 
 cd "$PLUGIN_PATH"
