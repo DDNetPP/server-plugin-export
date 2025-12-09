@@ -117,10 +117,7 @@ archive_load_git_dirs() {
 			err "Error: $git_path/.git already exists"
 			exit 1
 		fi
-		local base_dir="$(dirname "$git_path")"
-		pushd "$base_dir" >/dev/null
-		git clone "$git_remote"
-		popd >/dev/null # base_dir
+		git clone "$git_remote" "$git_path"
 	done < "$remotes_file"
 }
 
