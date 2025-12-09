@@ -7,8 +7,8 @@ login as teeworlds user such as ``teeworlds`` on the vps
 ```
 cd
 git clone git@github.com:DDNetPP/server myserver
-cd myserver/lib
-mkdir -p plugins && cd plugins
+cd myserver
+mkdir -p lib/plugins && cd lib/plugins
 git clone git@github.com:DDNetPP/server-plugin-export
 ```
 
