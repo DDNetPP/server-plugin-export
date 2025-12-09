@@ -11,7 +11,6 @@ _archive_save_cp() {
 	local filepath="$1"
 	local adir
 	adir="$(archive_dir)"
-	mkdir -p "$adir"
 	local dst="$adir/$filepath"
 	if [ -f "$dst" ]
 	then
@@ -83,12 +82,78 @@ archive_load_files_if_found() {
 	done
 }
 
+archive_save_git_dir() {
+	local remote="$1"
+	local path="$2"
+	local adir
+	adir="$(archive_dir)"
+	printf '%s %s\n' "$path" "$remote" >> "$adir/remotes.txt"
+}
+
+archive_load_git_dirs() {
+	local git_path
+	local git_remote
+	local adir
+	adir="$(archive_dir)"
+	local remotes_file="$adir/remotes.txt"
+	[ -f "$remotes_file" ] || return
+
+	while IFS=' ' read -r git_path git_remote
+	do
+		if [ -d "$git_path/.git" ]
+		then
+			err "Error: $git_path/.git already exists"
+			exit 1
+		fi
+		local base_dir="$(dirname "$git_path")"
+		pushd "$base_dir" >/dev/null
+		git clone "$git_remote"
+		popd >/dev/null # base_dir
+	done < "$remotes_file"
+}
+
+archive_save_git_dirs_if_found() {
+	# TODO: nested git dirs need to be ordered correctly
+	local git_dir
+	while read -r git_dir
+	do
+		[ "$git_dir" = "./.git" ] && continue
+
+		local git_remote=""
+		git_dir="$(dirname "$git_dir")"
+		log "found git repo: $git_dir"
+
+		pushd "$git_dir" >/dev/null
+		if ! git_remote="$(git config --get remote.origin.url)"
+		then
+			wrn "WARNING: failed to get origin remote in $PWD"
+		fi
+		popd >/dev/null # git_dir
+
+		if [ "$git_remote" != "" ]
+		then
+			log "writing $git_remote to archive .."
+			archive_save_git_dir "$git_remote" "$git_dir"
+		fi
+	done < <(find . -name .git -type d)
+}
+
 # main pubic method
 archive_export() {
+	adir="$(archive_dir)"
+	if [ -d "$adir" ]
+	then
+		err "Error: archive directory $(tput bold)$adir$(tput sgr0) already exists"
+		exit 1
+	fi
+	mkdir -p "$adir"
+
 	archive_save_files_if_found
+	archive_save_git_dirs_if_found
 }
 
 # main pubic method
 archive_import() {
 	archive_load_files_if_found
+	archive_load_git_dirs
 }
