@@ -142,6 +142,18 @@ archive_save_git_dirs_if_found() {
 	# or the parent repos can not be created because the directory already exists
 }
 
+archive_load_dir() {
+	local adir
+	adir="$(archive_dir)"
+	if [ ! -f "$adir" ]
+	then
+		err "Error: archive directory $(tput bold)$adir$(tput sgr0) not found"
+		exit 1
+	fi
+
+	# TODO: unpack base64 and so on
+}
+
 # main pubic method
 archive_export() {
 	adir="$(archive_dir)"
@@ -150,16 +162,44 @@ archive_export() {
 		err "Error: archive directory $(tput bold)$adir$(tput sgr0) already exists"
 		exit 1
 	fi
+	if [ -d "$adir".zip ]
+	then
+		err "Error: archive zip $(tput bold)${adir}.zip$(tput sgr0) already exists"
+		exit 1
+	fi
+	if [ -d "$adir".base64 ]
+	then
+		err "Error: archive base64 $(tput bold)${adir}.base64$(tput sgr0) already exists"
+		exit 1
+	fi
 	mkdir -p "$adir"
 
 	archive_save_files_if_found
 	archive_save_git_dirs_if_found
+
+
+	# TODO: cli args
+
+	# zip -r archive.zip archive
+	# local size
+	# size="$(du archive.zip | awk '{ print $1}')"
+	# if [ "$size" -lt 20 ]
+	# then
+	# 	log "small archive detected creating base64 that can be copy pasted ..."
+	# 	echo ""
+	# 	base64 -w0 archive.zip > archive.base64
+	# 	cat archive.base64
+	# 	echo ""
+	# 	log "copy the output above into a archive.base64 file to import"
+	# fi
 
 	log "finished export written to $(tput bold)$adir$(tput sgr0)"
 }
 
 # main pubic method
 archive_import() {
+	archive_load_dir
+
 	archive_load_files_if_found
 	archive_load_git_dirs
 }
