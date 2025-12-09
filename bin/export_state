@@ -1,0 +1,17 @@
+#!/bin/bash
+
+PLUGIN_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1; pwd -P )"
+# unwrap ./lib/plugins/plugname/
+SERVER_PATH="$(cd "$PLUGIN_PATH/../../.."; pwd - P)"
+
+cd "$SERVER_PATH"
+if [ ! -f lib/lib.sh ]
+then
+    echo "Error: lib/lib.sh not found!"
+    echo "make sure you are in the root of the server repo"
+    exit 1
+fi
+source lib/lib.sh # server root lib
+
+cd "$PLUGIN_PATH"
+source lib/lib.sh # plugin lib
