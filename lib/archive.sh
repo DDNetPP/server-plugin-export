@@ -126,6 +126,7 @@ archive_save_git_dirs_if_found() {
 	while read -r git_dir
 	do
 		[ "$git_dir" = "./.git" ] && continue
+		[ "$git_dir" = "./lib/plugins/server-plugin-export/.git" ] && continue
 
 		local git_remote=""
 		git_dir="$(dirname "$git_dir")"
