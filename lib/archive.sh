@@ -113,7 +113,6 @@ archive_load_git_dirs() {
 }
 
 archive_save_git_dirs_if_found() {
-	# TODO: nested git dirs need to be ordered correctly
 	local git_dir
 	while read -r git_dir
 	do
@@ -135,7 +134,12 @@ archive_save_git_dirs_if_found() {
 			log "writing $git_remote to archive .."
 			archive_save_git_dir "$git_remote" "$git_dir"
 		fi
-	done < <(find . -name .git -type d)
+	done < <(find . -name .git -type d | perl -e 'print sort { length($a) <=> length($b) } <>')
+	# the perl length cmp is to sort by length
+	# we need to store the git repos in that order
+	# to get the proper nesting order when loading them again
+	# otherwise the nested git repos are missing a base directory
+	# or the parent repos can not be created because the directory already exists
 }
 
 # main pubic method
