@@ -2,7 +2,7 @@
 
 ARG_FORMAT=dir
 
-ARCHIVE_PLUGIN_VERSION=1
+ARCHIVE_PLUGIN_VERSION=2
 
 ARCHIVE_TMP_DIR="$(mktemp -d /tmp/ddpp_server_archive_XXXXXX)"
 archive_cleanup() {
@@ -112,11 +112,12 @@ archive_load_files_if_found() {
 }
 
 archive_save_git_dir() {
-	local remote="$1"
+	local parent_dir="$1"
 	local path="$2"
+	local remote="$3"
 	local adir
 	adir="$(archive_dir)"
-	printf '%s %s\n' "$path" "$remote" >> "$adir/remotes.txt"
+	printf '%s %s %s\n' "$parent_dir" "$path" "$remote" >> "$adir/remotes.txt"
 }
 
 archive_load_git_dirs() {
@@ -127,25 +128,55 @@ archive_load_git_dirs() {
 	local remotes_file="$adir/remotes.txt"
 	[ -f "$remotes_file" ] || return
 
-	while IFS=' ' read -r git_path git_remote
+	while IFS=' ' read -r parent_dir git_path git_remote
 	do
+		if [ ! -d "$parent_dir" ]
+		then
+			log "creating git parent dir $parent_dir .."
+			mkdir -p "$parent_dir"
+		fi
+
+		pushd "$parent_dir" >/dev/null
+
+		local skip=0
 		if [ -d "$git_path/.git" ]
 		then
-			err "Error: $git_path/.git already exists"
-			exit 1
+			if [ "$parent_dir" = "." ]
+			then
+				err "Error: $git_path/.git already exists"
+				err "       current working directory: $(pwd)"
+				exit 1
+			else
+				wrn "Warning: skipping existing $parent_dir/$git_path"
+				skip=1
+			fi
 		fi
-		git clone "$git_remote" "$git_path"
+		
+		if [ "$skip" = 0 ]
+		then
+			git clone "$git_remote" "$git_path"
+		fi
+
+		popd >/dev/null # parent_dir
+
 	done < "$remotes_file"
 }
 
 archive_save_git_dirs_if_found() {
 	local parent_dir="$1"
 	local git_dir
+	[ -d "$parent_dir" ] || return
+
 	pushd "$parent_dir" >/dev/null
 	while read -r git_dir
 	do
-		[ "$git_dir" = ".git" ] && continue
-		[ "$git_dir" = "lib/plugins/server-plugin-export/.git" ] && continue
+		if [ "$parent_dir" = "." ]
+		then
+			[ "$git_dir" = ".git" ] && continue
+			[ "$git_dir" = "lib/plugins/server-plugin-export/.git" ] && continue
+		else
+			[[ "$git_dir" = */googletest-src/.git ]] && continue
+		fi
 
 		local git_remote=""
 		git_dir="$(dirname "$git_dir")"
@@ -161,7 +192,7 @@ archive_save_git_dirs_if_found() {
 		if [ "$git_remote" != "" ]
 		then
 			log "writing $git_remote to archive .."
-			archive_save_git_dir "$git_remote" "$parent_dir/$git_dir"
+			archive_save_git_dir "$parent_dir" "$git_dir" "$git_remote"
 		fi
 	done < <(find . -name .git -type d | perl -e 'print sort { length($a) <=> length($b) } <>' | cut -c3-)
 	# the perl length cmp is to sort by length
@@ -264,6 +295,7 @@ archive_export() {
 
 	archive_save_files_if_found
 	archive_save_git_dirs_if_found .
+	archive_save_git_dirs_if_found "$CFG_GIT_PATH_MOD"
 
 	# generate all formats at all times
 	pushd "$ARCHIVE_TMP_DIR"
