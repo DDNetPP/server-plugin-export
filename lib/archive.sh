@@ -122,11 +122,13 @@ archive_load_git_dirs() {
 }
 
 archive_save_git_dirs_if_found() {
+	local parent_dir="$1"
 	local git_dir
+	pushd "$parent_dir" >/dev/null
 	while read -r git_dir
 	do
-		[ "$git_dir" = "./.git" ] && continue
-		[ "$git_dir" = "./lib/plugins/server-plugin-export/.git" ] && continue
+		[ "$git_dir" = ".git" ] && continue
+		[ "$git_dir" = "lib/plugins/server-plugin-export/.git" ] && continue
 
 		local git_remote=""
 		git_dir="$(dirname "$git_dir")"
@@ -142,14 +144,16 @@ archive_save_git_dirs_if_found() {
 		if [ "$git_remote" != "" ]
 		then
 			log "writing $git_remote to archive .."
-			archive_save_git_dir "$git_remote" "$git_dir"
+			archive_save_git_dir "$git_remote" "$parent_dir/$git_dir"
 		fi
-	done < <(find . -name .git -type d | perl -e 'print sort { length($a) <=> length($b) } <>')
+	done < <(find . -name .git -type d | perl -e 'print sort { length($a) <=> length($b) } <>' | cut -c3-)
 	# the perl length cmp is to sort by length
 	# we need to store the git repos in that order
 	# to get the proper nesting order when loading them again
 	# otherwise the nested git repos are missing a base directory
 	# or the parent repos can not be created because the directory already exists
+
+	popd >/dev/null # parent_dir
 }
 
 archive_load_dir() {
@@ -231,7 +235,7 @@ archive_export() {
 	mkdir -p "$(archive_dir)"
 
 	archive_save_files_if_found
-	archive_save_git_dirs_if_found
+	archive_save_git_dirs_if_found .
 
 	# generate all formats at all times
 	pushd "$ARCHIVE_TMP_DIR"
