@@ -296,6 +296,7 @@ archive_export() {
 	archive_save_files_if_found
 	archive_save_git_dirs_if_found .
 	archive_save_git_dirs_if_found "$CFG_GIT_PATH_MOD"
+	archive_save_git_dirs_if_found "$CFG_GITPATH_ANTIBOT"
 
 	# generate all formats at all times
 	pushd "$ARCHIVE_TMP_DIR"
