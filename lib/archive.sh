@@ -257,7 +257,7 @@ archive_load_dir() {
 	if [ "$(archive_version)" != $ARCHIVE_PLUGIN_VERSION ]
 	then
 		err "Error: archive format version not supported"
-		err "       the plugin only supports version: $ARCHIVE_PLUGIN_VERISON"
+		err "       the plugin only supports version: $ARCHIVE_PLUGIN_VERSION"
 		err "       and the given file is in version: $(archive_version)"
 		exit 1
 	else
