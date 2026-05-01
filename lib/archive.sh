@@ -2,6 +2,8 @@
 
 ARG_FORMAT=dir
 
+ARCHIVE_PLUGIN_VERSION=1
+
 ARCHIVE_TMP_DIR="$(mktemp -d /tmp/ddpp_server_archive_XXXXXX)"
 archive_cleanup() {
 	rm -rf "$ARCHIVE_TMP_DIR"
@@ -16,6 +18,21 @@ archive_name() {
 # unpacked temporary archive working directory
 archive_dir() {
 	printf '%s/%s' "$ARCHIVE_TMP_DIR" "$(archive_name)"
+}
+
+archive_version() {
+	local adir
+	adir="$(archive_dir)"
+	if [ -f "$adir/version.txt" ]
+	then
+		cat "$adir/version.txt"
+	else
+		# everything before version 1 which introduced
+		# version support
+		# is still compatible with version 1
+		# so it is implicitly version 1
+		echo 1
+	fi
 }
 
 # copy file to archive
@@ -205,6 +222,16 @@ archive_load_dir() {
 		err "Error: unknown format $ARG_FORMAT"
 		exit 1
 	fi
+
+	if [ "$(archive_version)" != $ARCHIVE_PLUGIN_VERSION ]
+	then
+		err "Error: archive format version not supported"
+		err "       the plugin only supports version: $ARCHIVE_PLUGIN_VERISON"
+		err "       and the given file is in version: $(archive_version)"
+		exit 1
+	else
+		log "loaded archive format v$(archive_version) successfully"
+	fi
 }
 
 # main pubic method
@@ -233,6 +260,7 @@ archive_export() {
 	fi
 	# create temporary working directory
 	mkdir -p "$(archive_dir)"
+	echo "$ARCHIVE_PLUGIN_VERSION" > "$(archive_dir)/version.txt"
 
 	archive_save_files_if_found
 	archive_save_git_dirs_if_found .
@@ -275,6 +303,7 @@ archive_export() {
 	then
 		out_name="$out_name.$ARG_FORMAT"
 	fi
+	log "export using format v$(archive_version) successful"
 	log "finished export written to $(tput bold)$out_name$(tput sgr0)"
 }
 
