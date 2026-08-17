@@ -154,7 +154,7 @@ archive_load_git_dirs() {
 		
 		if [ "$skip" = 0 ]
 		then
-			git clone "$git_remote" "$git_path"
+			git clone --recursive "$git_remote" "$git_path"
 		fi
 
 		popd >/dev/null # parent_dir
